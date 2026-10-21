@@ -1,4 +1,6 @@
 import "./styles.css";
+import { supabase } from "./supabase.js";
+import { mountEnrollment, escapeHtml } from "./enrollment.js";
 
 const icons = {
   chart: `<svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19V9m6 10V5m6 14v-7m4 7H2"/></svg>`,
@@ -29,7 +31,8 @@ const subjects = [
 const app = document.querySelector("#app");
 const state = {
   loggedIn: sessionStorage.getItem("batchlens_auth") === "true",
-  view: "dashboard",
+  view: "profile",
+  demo: sessionStorage.getItem("mobius_demo") === "true",
   subject: 0,
   semester: 5,
   scores: JSON.parse(localStorage.getItem("batchlens_scores") || "null") || subjects.map(s => s.score)
@@ -48,8 +51,8 @@ function renderLogin() {
           <span class="eyebrow">Student portal</span>
           <h1>Know where<br/>you stand.</h1>
           <p>Private, meaningful academic insights — built for your batch, powered by shared progress.</p>
-          <form id="loginForm">
-            <div class="field"><label for="studentId">Institute login ID</label><div class="input-wrap">${icons.user}<input id="studentId" autocomplete="username" placeholder="e.g. 2023ME10542" required /></div></div>
+          <form id="loginForm"><p id="loginError" class="form-error" role="alert"></p>
+            <div class="field"><label for="studentId">College email</label><div class="input-wrap">${icons.user}<input id="studentId" autocomplete="username" placeholder="you@iimu.ac.in" required /></div></div>
             <div class="field"><label for="password">Password</label><div class="input-wrap">${icons.lock}<input id="password" type="password" autocomplete="current-password" placeholder="Enter your password" required /><button class="password-toggle" type="button" aria-label="Show password">${icons.eye}</button></div></div>
             <div class="login-meta"><label class="check"><input type="checkbox" checked /> Keep me signed in</label><a class="text-link" href="#">Forgot password?</a></div>
             <button class="primary-btn full" type="submit">Sign in securely ${icons.arrow}</button>
@@ -85,7 +88,7 @@ function renderLogin() {
   document.querySelector("#demoLogin").addEventListener("click", () => {
     document.querySelector("#studentId").value = "2023ME10542";
     document.querySelector("#password").value = "demo123";
-    setTimeout(login, 180);
+    setTimeout(() => login(true), 180);
   });
   document.querySelector(".password-toggle").addEventListener("click", () => {
     const el = document.querySelector("#password");
@@ -140,49 +143,39 @@ function renderCreateAccount() {
   document.querySelector("#signInInstead").addEventListener("click", renderLogin);
   document.querySelector("#createAccountForm").addEventListener("submit", (e) => {
     e.preventDefault();
-    const password = document.querySelector("#newPassword").value;
-    const confirmPassword = document.querySelector("#confirmPassword").value;
-    const error = document.querySelector("#createAccountError");
-    if (password !== confirmPassword) {
-      error.textContent = "Passwords do not match. Please try again.";
-      document.querySelector("#confirmPassword").focus();
-      return;
-    }
-    const account = {
-      name: document.querySelector("#fullName").value.trim(),
-      studentId: document.querySelector("#newStudentId").value.trim(),
-      email: document.querySelector("#instituteEmail").value.trim()
-    };
-    localStorage.setItem("batchlens_account", JSON.stringify(account));
-    sessionStorage.setItem("batchlens_auth", "true");
-    state.loggedIn = true;
-    renderPortal();
-    const toast = document.createElement("div");
-    toast.className = "save-toast";
-    toast.innerHTML = `${icons.check} Account created. Welcome to BatchLens.`;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 2400);
+    document.querySelector("#createAccountError").textContent = "Registration is awaiting college email verification setup. Use an existing approved account or explore the demo from the login page.";
   });
 }
 
-function login() {
-  sessionStorage.setItem("batchlens_auth", "true");
-  state.loggedIn = true;
-  renderPortal();
+async function login(demo = false) {
+  const errorEl=document.querySelector('#loginError');
+  try {
+    if (!demo) {
+      if (!supabase) throw Error('Student login is awaiting setup. You can explore the demo profile below.');
+      const email=document.querySelector('#studentId').value.trim().toLowerCase();
+      if (!email.endsWith('@iimu.ac.in')) throw Error('Use your approved @iimu.ac.in email.');
+      const {error}=await supabase.auth.signInWithPassword({email,password:document.querySelector('#password').value});
+      if(error)throw error;
+    }
+    state.demo=demo;state.view='profile';
+    sessionStorage.setItem('mobius_demo',String(demo));
+    sessionStorage.setItem('batchlens_auth','true');state.loggedIn=true;renderPortal();
+  } catch(e){if(errorEl)errorEl.textContent=e.message;}
 }
 
 function sidebar() {
   return `<aside class="sidebar" id="sidebar">
     ${brand()}
     <div class="nav-label">Workspace</div>
+    <button class="nav-item ${state.view === "profile" ? "active" : ""}" data-view="profile">${icons.user} My profile & subjects</button>
     <button class="nav-item ${state.view === "dashboard" ? "active" : ""}" data-view="dashboard">${icons.home} Overview</button>
     <button class="nav-item ${state.view === "performance" ? "active" : ""}" data-view="performance">${icons.chart} Relative performance</button>
     <button class="nav-item ${state.view === "submit" ? "active" : ""}" data-view="submit">${icons.edit} Submit scores</button>
     <div class="nav-label">Academic record</div>
     <div class="semester-block">
-      ${[1,2,3,4,5,6].map(s => `<div class="semester-row ${s === state.semester ? "active" : ""}"><span>Semester ${s}</span><i class="sem-dot"></i></div>`).join("")}
+      ${[1,2,3,4,5,6,7,8].map(s => `<div class="semester-row ${state.view !== "profile" && s === state.semester ? "active" : ""}"><span>Term ${s}</span><i class="sem-dot"></i></div>`).join("")}
     </div>
-    <div class="sidebar-profile"><div class="avatar">RD</div><div><strong>Richa Dubey</strong><small>2023ME10542</small></div><button class="logout" title="Sign out">${icons.logout}</button></div>
+    <div class="sidebar-profile"><div class="avatar">${state.demo ? "DS" : "ME"}</div><div><strong>${state.demo ? "Demo Student" : "Student profile"}</strong><small>${state.demo ? "Example account" : "College account"}</small></div><button class="logout" title="Sign out">${icons.logout}</button></div>
   </aside>`;
 }
 
@@ -257,14 +250,19 @@ function submitView() {
 }
 
 function renderPortal() {
-  const body = state.view === "submit" ? submitView() : state.view === "performance" ? performanceView() : dashboard();
-  app.innerHTML = shell(body, state.view === "submit" ? "Score Repository" : state.view === "performance" ? "Class Insights" : "Academic Performance");
+  const profile = state.view === 'profile';
+  const body = profile ? '<div id="enrollmentRoot"></div>' : !state.demo ? '<section class="panel score-form"><h2>Academic workspace</h2><p>Your profile and subject enrollment are ready. Score submission and performance screens are being connected separately.</p><button class="primary-btn" data-view="profile">Back to my subjects</button></section>' : state.view === "submit" ? submitView() : state.view === "performance" ? performanceView() : dashboard();
+  app.innerHTML = shell(body, profile ? "My profile & subjects" : "Academic Performance", 'Mobius · Student workspace');
+  if(state.demo) document.querySelector('.top-title p').textContent='Demo workspace · Example data';
   bindPortal();
+  if(profile) mountEnrollment(document.querySelector('#enrollmentRoot'), {demo:state.demo,notify:message=>{
+    const toast=document.createElement('div');toast.className='save-toast';toast.textContent=message;document.body.append(toast);setTimeout(()=>toast.remove(),3000);
+  }});
 }
 
 function bindPortal() {
   document.querySelectorAll("[data-view]").forEach(el => el.addEventListener("click", () => { state.view = el.dataset.view; renderPortal(); window.scrollTo(0,0); }));
-  document.querySelector(".logout")?.addEventListener("click", () => { sessionStorage.removeItem("batchlens_auth"); state.loggedIn=false; renderLogin(); });
+  document.querySelector(".logout")?.addEventListener("click", async () => { if(!state.demo && supabase) await supabase.auth.signOut(); sessionStorage.removeItem("mobius_demo"); sessionStorage.removeItem("batchlens_auth"); state.loggedIn=false; renderLogin(); });
   document.querySelector(".mobile-menu")?.addEventListener("click", () => document.querySelector("#sidebar").classList.toggle("open"));
   document.querySelector("#subjectFilter")?.addEventListener("change", (e) => { state.subject=Number(e.target.value); renderPortal(); });
   document.querySelector("#saveScores")?.addEventListener("click", () => {
@@ -278,4 +276,10 @@ function bindPortal() {
   });
 }
 
-state.loggedIn ? renderPortal() : renderLogin();
+async function start() {
+  if (state.demo && state.loggedIn) {renderPortal();return;}
+  state.loggedIn=false;
+  if(supabase){const {data:{session}}=await supabase.auth.getSession();state.loggedIn=!!session;}
+  state.loggedIn ? renderPortal() : renderLogin();
+}
+start();
