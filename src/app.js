@@ -173,7 +173,7 @@ function sidebar() {
     <button class="nav-item ${state.view === "submit" ? "active" : ""}" data-view="submit">${icons.edit} Submit scores</button>
     <div class="nav-label">Academic record</div>
     <div class="semester-block">
-      ${[1,2,3,4,5,6,7,8].map(s => `<div class="semester-row ${s === state.semester ? "active" : ""}"><span>Term ${s}</span><i class="sem-dot"></i></div>`).join("")}
+      ${[1,2,3,4,5,6,7,8].map(s => `<div class="semester-row ${state.view !== "profile" && s === state.semester ? "active" : ""}"><span>Term ${s}</span><i class="sem-dot"></i></div>`).join("")}
     </div>
     <div class="sidebar-profile"><div class="avatar">${state.demo ? "DS" : "ME"}</div><div><strong>${state.demo ? "Demo Student" : "Student profile"}</strong><small>${state.demo ? "Example account" : "College account"}</small></div><button class="logout" title="Sign out">${icons.logout}</button></div>
   </aside>`;
