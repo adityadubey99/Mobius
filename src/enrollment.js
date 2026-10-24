@@ -8,19 +8,33 @@ export async function mountEnrollment(root, { demo = false, notify = () => {} } 
  root.innerHTML = '<p role="status">Loading your academic profile…</p>';
  try {
   if (demo) {
-   profile = { full_name:'Demo Student',roll_number:'DEMO-2026',section:'A' };
+   profile = { full_name:'Demo Student',roll_number:'DEMO-2026',section:'A',college_email:'demo@iimu.ac.in',batches:{name:'2026–28',programs:{name:'MBA 2-year programme'}} };
    terms = Array.from({length:6},(_,i)=>({id:`demo-${i+3}`,term_number:i+3,name:`Term ${i+3}`}));
   } else {
    if (!supabase) throw Error('Student login has not been connected yet.');
-   profile = check(await supabase.from('students').select('id,full_name,roll_number,college_email,section,batch_id').single());
+   profile = check(await supabase.from('students').select('id,full_name,roll_number,college_email,section,batch_id,batches(name,programs(name))').single());
    check(await supabase.rpc('sync_my_core_enrollments'));
    terms = check(await supabase.from('terms').select('id,term_number,name').eq('batch_id',profile.batch_id).gte('term_number',3).lte('term_number',8).order('term_number'));
   }
  } catch(e) { root.innerHTML=`<div class="enrollment-empty" role="alert">${escapeHtml(e.message)}</div>`; return; }
  root.innerHTML = `<div class="profile-summary"><div class="profile-avatar">${escapeHtml(profile.full_name.split(' ').map(w=>w[0]).slice(0,2).join(''))}</div><div><span class="eyebrow">STUDENT PROFILE</span><h2>${escapeHtml(profile.full_name)}</h2><p>${escapeHtml(profile.roll_number)} · Home section ${escapeHtml(profile.section || 'pending')}</p></div><span class="status-pill">${demo?'Demo profile':'Verified student'}</span></div>
  ${demo?'<div class="enrollment-notice">Demo mode · Example subjects only. Changes are saved in this browser, and demo locks are not database security.</div>':''}
+ <div class="profile-tabs" role="tablist" aria-label="Profile and subjects"><button type="button" id="profileDetailsTab" role="tab" aria-selected="true" aria-controls="profileDetailsPanel" tabindex="0">Profile details</button><button type="button" id="termSubjectsTab" role="tab" aria-selected="false" aria-controls="termSubjectsPanel" tabindex="-1">Term subjects</button></div>
+ <section id="profileDetailsPanel" class="panel profile-details" role="tabpanel" aria-labelledby="profileDetailsTab"><div class="panel-head"><div><h3>Profile details</h3><p>Your college identity and academic programme.</p></div></div><dl class="profile-details-grid">${[
+ ['Full name',profile.full_name],['College email ID',profile.college_email],['Roll number',profile.roll_number],['Programme',profile.batches?.programs?.name],['Batch',profile.batches?.name],['Section (Terms 1 & 2)',profile.section]
+ ].map(([label,value])=>`<div><dt>${label}</dt><dd>${escapeHtml(value || 'Awaiting admin assignment')}</dd></div>`).join('')}</dl><p class="profile-details-note">Your home section is used for Term 1 and Term 2 comparisons. Contact an admin to correct your profile details.</p></section>
+ <div id="termSubjectsPanel" role="tabpanel" aria-labelledby="termSubjectsTab" hidden>
  <section class="panel enrollment-panel"><div class="panel-head"><div><h3>Your subjects & sections</h3><p>Choose what you study. Confirm once for each term.</p></div><div class="field term-picker"><label for="enrollmentTerm">Select term</label><select id="enrollmentTerm" class="form-select">${Array.from({length:6},(_,i)=>{const n=i+3,t=terms.find(t=>t.term_number===n);return `<option value="${escapeHtml(t?.id||'')}" ${t?'':'disabled'}>Term ${n}${t?'':' · Not offered yet'}</option>`;}).join('')}</select></div></div><div id="enrollmentBody"></div></section>
- <div class="core-note"><strong>Terms 1 & 2</strong><span>All subjects use your registered home section: <strong>${escapeHtml(profile.section || 'Awaiting admin assignment')}</strong>. These assignments are managed by the admin.</span></div>`;
+ <div class="core-note"><strong>Terms 1 & 2</strong><span>All subjects use your registered home section: <strong>${escapeHtml(profile.section || 'Awaiting admin assignment')}</strong>. These assignments are managed by the admin.</span></div></div>`;
+ const tabs = [...root.querySelectorAll('[role="tab"]')];
+ function selectTab(index, focus = false) {
+  tabs.forEach((tab,i)=>{const active=i===index;tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;root.querySelector(`#${tab.getAttribute('aria-controls')}`).hidden=!active;});
+  if(focus)tabs[index].focus();
+ }
+ tabs.forEach((tab,index)=>{
+  tab.addEventListener('click',()=>selectTab(index));
+  tab.addEventListener('keydown',event=>{let next;if(event.key==='ArrowRight'||event.key==='ArrowLeft')next=1-index;else if(event.key==='Home')next=0;else if(event.key==='End')next=tabs.length-1;else return;event.preventDefault();selectTab(next,true);});
+ });
  const body = root.querySelector('#enrollmentBody'), picker=root.querySelector('#enrollmentTerm');
  const showError = message => { const el=body.querySelector('#enrollmentError'); if(el){el.textContent=message;el.focus();} else body.textContent=message; };
  async function load(id) {

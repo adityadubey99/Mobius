@@ -43,3 +43,16 @@ Without environment variables, student login reports setup is pending. The
 explicit **Use demo student account** button opens a browser-local demonstration
 with clearly labelled example subjects. Its saved choices and locks are demo
 state, not the database's access controls.
+
+## Registration and profile details
+
+Registration collects full name, college email ID (@iimu.ac.in), roll number,
+programme, batch, and home section (used for Terms 1–2). The initial available
+batch is MBA 2026–28; other programmes show no available batches until configured.
+The form remains a verification-setup placeholder and does not create accounts
+or persist registration submissions. OTP/password setup remains separate work.
+
+My profile & subjects contains two accessible tabs: **Profile details** displays
+the six approved profile fields, including programme and batch read through
+existing database relationships; **Term subjects** preserves the term subject
+and section draft/locking workflow. Profile fields are read-only.

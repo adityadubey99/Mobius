@@ -108,18 +108,18 @@ function renderCreateAccount() {
           <h1>Create your<br/>account.</h1>
           <p>Use your institute details so your scores are matched to the correct batch.</p>
           <form id="createAccountForm">
+            <div class="field"><label for="fullName">Full name</label><div class="input-wrap">${icons.user}<input id="fullName" autocomplete="name" placeholder="Your full name" required /></div></div>
+            <div class="field"><label for="instituteEmail">College email ID</label><div class="input-wrap">${icons.mail}<input id="instituteEmail" type="email" autocomplete="email" placeholder="you@iimu.ac.in" required /></div><small class="field-hint">Use your @iimu.ac.in college email address.</small></div>
+            <div class="field"><label for="newStudentId">Roll number</label><div class="input-wrap">${icons.user}<input id="newStudentId" placeholder="Your college roll number" required /></div></div>
             <div class="form-row account-row">
-              <div class="field"><label for="fullName">Full name</label><div class="input-wrap">${icons.user}<input id="fullName" autocomplete="name" placeholder="Your full name" required /></div></div>
-              <div class="field"><label for="newStudentId">Institute login ID</label><div class="input-wrap">${icons.user}<input id="newStudentId" autocomplete="username" placeholder="e.g. 2023ME10542" required /></div></div>
+              <div class="field"><label for="programme">Programme</label><select id="programme" class="form-select" required><option value="">Select programme</option><option value="MBA">MBA 2-year programme</option><option value="MBA_GSCM">MBA 1-year GSCM</option><option value="MBA_DEM">MBA 1-year DEM</option></select></div>
+              <div class="field"><label for="batch">Batch</label><select id="batch" class="form-select" required disabled><option value="">Select programme first</option></select><small class="field-hint" id="batchHint">Batches are specific to each programme.</small></div>
             </div>
-            <div class="field"><label for="instituteEmail">Institute email</label><div class="input-wrap">${icons.mail}<input id="instituteEmail" type="email" autocomplete="email" placeholder="you@college.ac.in" required /></div><small class="field-hint">Use the email address issued by your institute.</small></div>
-            <div class="form-row account-row">
-              <div class="field"><label for="newPassword">Create password</label><div class="input-wrap">${icons.lock}<input id="newPassword" type="password" autocomplete="new-password" minlength="8" placeholder="At least 8 characters" required /></div></div>
-              <div class="field"><label for="confirmPassword">Confirm password</label><div class="input-wrap">${icons.lock}<input id="confirmPassword" type="password" autocomplete="new-password" minlength="8" placeholder="Re-enter password" required /></div></div>
-            </div>
+            <div class="field"><label for="homeSection">Section</label><div class="input-wrap"><input id="homeSection" maxlength="20" placeholder="e.g. A" required aria-describedby="sectionHint" /></div><small class="field-hint" id="sectionHint">Your home section is used for Term 1 and Term 2 comparisons. Later terms have subject-specific sections.</small></div>
+            <p class="field-hint">Email verification must be configured before registration opens. Your academic details will be checked against the approved college roster.</p>
             <p class="form-error" id="createAccountError" role="alert" aria-live="polite"></p>
             <label class="check terms-check"><input id="acceptTerms" type="checkbox" required /> I agree to keep submitted marks accurate and respect batch privacy.</label>
-            <button class="primary-btn full" type="submit">Create account ${icons.arrow}</button>
+            <button class="primary-btn full" type="submit">Continue to verification ${icons.arrow}</button>
           </form>
           <p class="account-prompt">Already registered? <button class="inline-action" id="signInInstead" type="button">Sign in instead</button></p>
         </div>
@@ -141,6 +141,16 @@ function renderCreateAccount() {
 
   document.querySelector("#backToLogin").addEventListener("click", renderLogin);
   document.querySelector("#signInInstead").addEventListener("click", renderLogin);
+  const programme = document.querySelector('#programme');
+  const batch = document.querySelector('#batch');
+  programme.addEventListener('change', () => {
+    const available = programme.value === 'MBA';
+    batch.innerHTML = available ? '<option value="">Select batch</option><option value="2026–28">2026–28</option>' : '<option value="">No batches available yet</option>';
+    batch.disabled = !available;
+    document.querySelector('#batchHint').textContent = available ? 'Choose your programme batch.' : 'Registration for this programme will open after an admin adds its batches.';
+  });
+  const collegeEmail = document.querySelector('#instituteEmail');
+  collegeEmail.addEventListener('input', () => collegeEmail.setCustomValidity(/^[^@\s]+@iimu\.ac\.in$/i.test(collegeEmail.value.trim()) ? '' : 'Use your @iimu.ac.in college email ID.'));
   document.querySelector("#createAccountForm").addEventListener("submit", (e) => {
     e.preventDefault();
     document.querySelector("#createAccountError").textContent = "Registration is awaiting college email verification setup. Use an existing approved account or explore the demo from the login page.";
