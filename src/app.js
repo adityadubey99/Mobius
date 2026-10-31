@@ -192,7 +192,7 @@ function sidebar() {
 }
 
 function shell(content, title = "Academic Performance", subtitle = "Mechanical Engineering · Batch of 2027") {
-  return `<div class="portal">${sidebar()}<div class="main">
+  return `<div class="portal ${!state.demo&&state.view==='performance'?'performance-page':''}">${sidebar()}<div class="main">
     <header class="topbar"><button class="icon-btn mobile-menu" aria-label="Open menu">${icons.menu}</button><div class="top-title"><h1>${title}</h1><p>${subtitle}</p></div><div class="top-actions"><button class="icon-btn" aria-label="Search">${icons.chart}</button><button class="icon-btn" aria-label="Notifications">${icons.bell}<i class="notify-dot"></i></button></div></header>
     <div class="content">${content}</div></div></div>`;
 }

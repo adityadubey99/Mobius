@@ -78,11 +78,18 @@ never writes to Supabase and is not included in the production Vite build.
 
 ## Relative performance dashboard
 
-Relative performance restores the greeting, two action cards, four-metric
-snapshot and green distribution chart. Submit scores and Profile & Subjects
+Relative performance shows the greeting, a compact Submit scores action, a
+five-metric snapshot and a green distribution chart. The snapshot contains the
+student score, cohort average with median, minimum, maximum and rank; percentile
+is hidden on this dashboard. Submit scores and Profile & Subjects
 retain their existing screens. The dashboard currently reads Operations
 Research, Term 2, Quiz 1, and switches between the student's section and the
-whole subject cohort. Average and median are shown in raw marks out of 15.
+whole subject cohort. Average, median, minimum and maximum are shown in raw marks out of 15.
 The plotted curve joins five aggregate score bands, rather than assuming a
 normal distribution or using example student marks. All cohort metrics remain
 hidden below the existing five-submission threshold.
+
+The live Relative performance screen fits the viewport without page scrolling.
+Viewport checks cover 1024×600, 390×700 and 320×568, including all five metrics
+and the insight footer. Other tabs retain their original sizing and scrolling.
+Use `tests/dashboard-sizes.html` for the isolated mocked viewport fixtures.
