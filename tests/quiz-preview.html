@@ -1,16 +1,18 @@
 <!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>Local quiz entry check</title></head><body style="padding:24px"><main id="root"></main><script type="module">
 import '../src/styles.css';
 import { mountQuizEntry } from '../src/quiz-entry.js';
+import { mountRelativePerformance } from '../src/relative-performance.js';
+const relative=new URLSearchParams(location.search).get('view')==='performance';
 const fixture = {
  students: {id:'student-test',full_name:'Test Student',batch_id:'batch-test',section:'C'},
  terms: {id:'term-test',name:'Term 2'}, subjects:{id:'subject-test',code:'OR',name:'Operations Research'},
  subject_enrollments:{id:'enrollment-test',subject_group_id:'group-test'},
- assessments:{id:'quiz-test',name:'Quiz 1',max_marks:15,weight_percent:15,submission_deadline:null},scores:null
+ assessments:{id:'quiz-test',name:'Quiz 1',max_marks:15,weight_percent:15,submission_deadline:null},scores:relative&&!new URLSearchParams(location.search).has('unsubmitted')?{marks:8}:null
 };
 const showTies=new URLSearchParams(location.search).get('standing')==='ties';
 window.testCalls=[];
 const client={auth:{getUser:async()=>({data:{user:{id:'auth-test'}}})},from(table){
  const query={select(){return this;},eq(){return this;},upsert(value,options){window.testCalls.push({value,options});fixture.scores={marks:value.marks,updated_at:new Date().toISOString()};return this;},async single(){return{data:fixture[table]};},async maybeSingle(){return{data:fixture[table]};}};return query;
-},rpc:async()=>({data:{minimum_participants:5,comparisons:['batch_subject','subject_group'].map(scope=>({scope,submitted_students:showTies?5:1,eligible_students:71,status:showTies?'available':'insufficient_submissions',rank:showTies?1:null,percentile:showTies?100:null,tie_count:showTies?2:null}))}})};
-window.remount=()=>mountQuizEntry(document.querySelector('#root'),{client});window.remount();
+},rpc:async()=>({data:{minimum_participants:5,comparisons:['batch_subject','subject_group'].map(scope=>({scope,submitted_students:showTies?5:1,eligible_students:71,status:showTies?'available':'insufficient_submissions',rank:showTies?1:null,percentile:showTies?100:null,tie_count:showTies?2:null,average_percentage:46.67,median_percentage:46.67,distribution:[{lower_percent:0,upper_percent:20,students:0},{lower_percent:20,upper_percent:40,students:1},{lower_percent:40,upper_percent:60,students:4},{lower_percent:60,upper_percent:80,students:0},{lower_percent:80,upper_percent:100,students:0}]}))}})};
+window.remount=()=>relative?mountRelativePerformance(document.querySelector('#root'),{client,onNavigate:view=>{document.querySelector('#root').textContent='Navigation: '+view;}}):mountQuizEntry(document.querySelector('#root'),{client});window.remount();
 </script></body></html>

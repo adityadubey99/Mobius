@@ -75,3 +75,14 @@ Auth account. This change does not create accounts or insert student marks.
 
 `tests/quiz-preview.html` is an isolated browser fixture with mocked data; it
 never writes to Supabase and is not included in the production Vite build.
+
+## Relative performance dashboard
+
+Relative performance restores the greeting, two action cards, four-metric
+snapshot and green distribution chart. Submit scores and Profile & Subjects
+retain their existing screens. The dashboard currently reads Operations
+Research, Term 2, Quiz 1, and switches between the student's section and the
+whole subject cohort. Average and median are shown in raw marks out of 15.
+The plotted curve joins five aggregate score bands, rather than assuming a
+normal distribution or using example student marks. All cohort metrics remain
+hidden below the existing five-submission threshold.
