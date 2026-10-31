@@ -64,7 +64,9 @@ and any submission deadline. No schema migration is needed for this release.
 
 Comparisons use the existing `get_my_performance` RPC after the student submits
 their own Quiz 1 score. Rank and percentile require at least five submissions
-per comparison cohort. Missing marks are excluded, ties share rank, and cross-
+per comparison cohort. Missing marks are excluded. Percentile counts results at or below the student's
+score, so all students tied for highest receive 100. Tied students display
+Joint rank; competition ranks skip tied positions (1, 1, 3). Cross-
 section comparisons use raw scores without normalization.
 
 All 71 Section C roster students are enrolled in this subject. Enrollment alone

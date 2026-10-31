@@ -7,9 +7,10 @@ const fixture = {
  subject_enrollments:{id:'enrollment-test',subject_group_id:'group-test'},
  assessments:{id:'quiz-test',name:'Quiz 1',max_marks:15,weight_percent:15,submission_deadline:null},scores:null
 };
+const showTies=new URLSearchParams(location.search).get('standing')==='ties';
 window.testCalls=[];
 const client={auth:{getUser:async()=>({data:{user:{id:'auth-test'}}})},from(table){
  const query={select(){return this;},eq(){return this;},upsert(value,options){window.testCalls.push({value,options});fixture.scores={marks:value.marks,updated_at:new Date().toISOString()};return this;},async single(){return{data:fixture[table]};},async maybeSingle(){return{data:fixture[table]};}};return query;
-},rpc:async()=>({data:{minimum_participants:5,comparisons:['batch_subject','subject_group'].map(scope=>({scope,submitted_students:1,eligible_students:71,status:'insufficient_submissions'}))}})};
+},rpc:async()=>({data:{minimum_participants:5,comparisons:['batch_subject','subject_group'].map(scope=>({scope,submitted_students:showTies?5:1,eligible_students:71,status:showTies?'available':'insufficient_submissions',rank:showTies?1:null,percentile:showTies?100:null,tie_count:showTies?2:null}))}})};
 window.remount=()=>mountQuizEntry(document.querySelector('#root'),{client});window.remount();
 </script></body></html>
