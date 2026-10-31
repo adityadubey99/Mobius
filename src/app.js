@@ -1,5 +1,6 @@
 import "./styles.css";
 import { supabase } from "./supabase.js";
+import { mountQuizEntry } from "./quiz-entry.js";
 import { mountEnrollment, escapeHtml } from "./enrollment.js";
 
 const icons = {
@@ -261,10 +262,11 @@ function submitView() {
 
 function renderPortal() {
   const profile = state.view === 'profile';
-  const body = profile ? '<div id="enrollmentRoot"></div>' : !state.demo ? '<section class="panel score-form"><h2>Academic workspace</h2><p>Your profile and subject enrollment are ready. Score submission and performance screens are being connected separately.</p><button class="primary-btn" data-view="profile">Back to my subjects</button></section>' : state.view === "submit" ? submitView() : state.view === "performance" ? performanceView() : dashboard();
+  const body = profile ? '<div id="enrollmentRoot"></div>' : !state.demo && ['submit','performance'].includes(state.view) ? '<div id="quizEntryRoot"></div>' : !state.demo ? '<section class="panel score-form"><h2>Academic workspace</h2><p>Your profile and subject enrollment are ready. Operations Research Quiz 1 is ready for your marks.</p><button class="primary-btn" data-view="profile">Back to my subjects</button><button class="primary-btn" data-view="submit">Enter Quiz 1 marks</button></section>' : state.view === "submit" ? submitView() : state.view === "performance" ? performanceView() : dashboard();
   app.innerHTML = shell(body, profile ? "My profile & subjects" : "Academic Performance", 'Mobius · Student workspace');
   if(state.demo) document.querySelector('.top-title p').textContent='Demo workspace · Example data';
   bindPortal();
+  if(!state.demo && ["submit","performance"].includes(state.view)) mountQuizEntry(document.querySelector("#quizEntryRoot"));
   if(profile) mountEnrollment(document.querySelector('#enrollmentRoot'), {demo:state.demo,notify:message=>{
     const toast=document.createElement('div');toast.className='save-toast';toast.textContent=message;document.body.append(toast);setTimeout(()=>toast.remove(),3000);
   }});

@@ -1,0 +1,15 @@
+<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>Local quiz entry check</title></head><body style="padding:24px"><main id="root"></main><script type="module">
+import '../src/styles.css';
+import { mountQuizEntry } from '../src/quiz-entry.js';
+const fixture = {
+ students: {id:'student-test',full_name:'Test Student',batch_id:'batch-test',section:'C'},
+ terms: {id:'term-test',name:'Term 2'}, subjects:{id:'subject-test',code:'OR',name:'Operations Research'},
+ subject_enrollments:{id:'enrollment-test',subject_group_id:'group-test'},
+ assessments:{id:'quiz-test',name:'Quiz 1',max_marks:15,weight_percent:15,submission_deadline:null},scores:null
+};
+window.testCalls=[];
+const client={auth:{getUser:async()=>({data:{user:{id:'auth-test'}}})},from(table){
+ const query={select(){return this;},eq(){return this;},upsert(value,options){window.testCalls.push({value,options});fixture.scores={marks:value.marks,updated_at:new Date().toISOString()};return this;},async single(){return{data:fixture[table]};},async maybeSingle(){return{data:fixture[table]};}};return query;
+},rpc:async()=>({data:{minimum_participants:5,comparisons:['batch_subject','subject_group'].map(scope=>({scope,submitted_students:1,eligible_students:71,status:'insufficient_submissions'}))}})};
+window.remount=()=>mountQuizEntry(document.querySelector('#root'),{client});window.remount();
+</script></body></html>
