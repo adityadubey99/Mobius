@@ -41,7 +41,7 @@ const state = {
 };
 
 function brand() {
-  return `<div class="brand"><div class="brand-mark">${icons.chart}</div><span>Batch<em>Lens</em></span></div>`;
+  return `<div class="brand" aria-label="Möbius"><div class="brand-mark"><img class="mobius-logo" src="/mobius-mark.svg" width="48" height="40" alt="" /></div><span class="brand-wordmark">Möbius</span></div>`;
 }
 
 function renderLogin() {
@@ -59,7 +59,7 @@ function renderLogin() {
             <div class="login-meta"><label class="check"><input type="checkbox" checked /> Keep me signed in</label><a class="text-link" href="#">Forgot password?</a></div>
             <button class="primary-btn full" type="submit">Sign in securely ${icons.arrow}</button>
           </form>
-          <p class="account-prompt">New to BatchLens? <button class="inline-action" id="showCreateAccount" type="button">Create an account</button></p>
+          <p class="account-prompt">New to Möbius? <button class="inline-action" id="showCreateAccount" type="button">Create an account</button></p>
           <div class="demo-line">OR EXPLORE THE PROTOTYPE</div>
           <button class="demo-btn" id="demoLogin">Use demo student account</button>
         </div>
@@ -258,13 +258,13 @@ function submitView() {
   <div class="form-layout"><section class="panel score-form"><div class="form-row"><div class="field"><label>Semester</label><select class="form-select"><option>Semester 5 · Aug–Dec 2026</option><option>Semester 4 · Jan–May 2026</option></select></div><div class="field"><label>Assessment</label><select class="form-select"><option>End Semester Examination</option><option>Mid Semester Examination</option><option>Combined total</option></select></div></div>
     <div class="subject-list"><div class="subject-head"><span>Subject</span><span>Your score</span><span>Maximum</span></div>${subjects.map((s,i)=>`<div class="subject-input-row"><div class="subject-name"><strong>${s.name}</strong><small>${s.code}</small></div><input class="score-input" type="number" min="0" max="100" value="${state.scores[i]}" data-index="${i}" aria-label="${s.name} score"/><span class="max-marks">100</span></div>`).join("")}</div>
     <div class="form-actions"><button class="secondary-btn" data-view="dashboard">Cancel</button><button class="primary-btn" id="saveScores">${icons.check} Save scores</button></div></section>
-    <aside class="panel tip-card">${icons.shield}<h3>Your marks are private</h3><p>Individual scores are never shown to classmates. BatchLens only uses anonymous aggregates to calculate standing.</p><ul><li>Use final published marks</li><li>Check each entry before saving</li><li>Updates recalculate your position</li></ul></aside></div>`;
+    <aside class="panel tip-card">${icons.shield}<h3>Your marks are private</h3><p>Individual scores are never shown to classmates. Möbius only uses anonymous aggregates to calculate standing.</p><ul><li>Use final published marks</li><li>Check each entry before saving</li><li>Updates recalculate your position</li></ul></aside></div>`;
 }
 
 function renderPortal() {
   const profile = state.view === 'profile';
   const body = profile ? '<div id="enrollmentRoot"></div>' : !state.demo && state.view === 'performance' ? '<div id="relativePerformanceRoot"></div>' : !state.demo && state.view === 'submit' ? '<div id="quizEntryRoot"></div>' : !state.demo ? '<section class="panel score-form"><h2>Academic workspace</h2><p>Your profile and subject enrollment are ready. Operations Research Quiz 1 is ready for your marks.</p><button class="primary-btn" data-view="profile">Back to my subjects</button><button class="primary-btn" data-view="submit">Enter Quiz 1 marks</button></section>' : state.view === "submit" ? submitView() : state.view === "performance" ? performanceView() : dashboard();
-  app.innerHTML = shell(body, profile ? "My profile & subjects" : "Academic Performance", 'Mobius · Student workspace');
+  app.innerHTML = shell(body, profile ? "My profile & subjects" : "Academic Performance", 'Möbius · Student workspace');
   if(state.demo) document.querySelector('.top-title p').textContent='Demo workspace · Example data';
   bindPortal();
   if(!state.demo && state.view === "performance") mountRelativePerformance(document.querySelector("#relativePerformanceRoot"),{onNavigate:view=>{state.view=view;renderPortal();window.scrollTo(0,0);}});
