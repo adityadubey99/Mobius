@@ -2,7 +2,7 @@ import { supabase } from './supabase.js';
 export const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const demoNames = ['Supply Chain Analytics','Digital Marketing','Corporate Finance','Operations Strategy','Business Analytics','Consumer Behaviour'];
 function readDemo() { try { return JSON.parse(localStorage.getItem('mobius_demo_enrollments') || '{}'); } catch { return {}; } }
-export async function mountEnrollment(root, { demo = false, notify = () => {} } = {}) {
+export async function mountEnrollment(root, { demo = false, notify = () => {}, onEnterScores = () => {} } = {}) {
  let profile, terms, cache = new Map(), request = 0, current, busy = false;
  const check = ({ data, error }) => { if (error) throw error; return data; };
  root.innerHTML = '<p role="status">Loading your academic profile…</p>';
@@ -61,8 +61,8 @@ export async function mountEnrollment(root, { demo = false, notify = () => {} } 
   const termNumber=terms.find(t=>t.id===current)?.term_number;
   const core=termNumber<=2;
   if(core){
-   body.innerHTML=`<div class="enrollment-status"><span><strong>Compulsory subjects</strong><small>Your Term 1–2 section comes from your registered profile and is managed by the admin.</small></span></div>${model.offered.map(s=>`<div class="enrollment-row"><span>${escapeHtml(s.name)}</span><strong>Section ${escapeHtml(profile.section)}</strong></div>`).join('')||'<p class="enrollment-empty">No subjects published for this term yet.</p>'}${termNumber===2&&model.offered.some(s=>s.code==='OR')?'<div class="enrollment-footer"><button type="button" class="primary-btn" id="openQuizMarks">Enter Operations Research Quiz 1 marks →</button></div>':''}`;
-   body.querySelector('#openQuizMarks')?.addEventListener('click',()=>document.querySelector('[data-view="submit"]')?.click());return;
+   body.innerHTML=`<div class="enrollment-status"><span><strong>Compulsory subjects</strong><small>Your Term 1–2 section comes from your registered profile and is managed by the admin.</small></span></div>${model.offered.map(s=>`<div class="enrollment-row"><span>${escapeHtml(s.name)}</span><strong>Section ${escapeHtml(profile.section)}</strong><button class="secondary-btn" type="button" data-enter-scores="${escapeHtml(s.id)}">Enter scores →</button></div>`).join('')||'<p class="enrollment-empty">No subjects published for this term yet.</p>'}`;
+   body.querySelectorAll('[data-enter-scores]').forEach(el=>el.onclick=()=>onEnterScores({termId:current,subjectId:el.dataset.enterScores}));return;
   }
   const locked=!!model.lockedAt;
   body.innerHTML=`<div class="enrollment-status ${locked?'is-locked':''}"><span><strong>${locked?'Subjects locked':'Enrollment draft'}</strong><small>${locked?'Only an admin can change your subjects or sections.':'You can edit your choices until you lock this term.'}</small></span><span id="selectedCount">${model.selected.size} selected</span></div>

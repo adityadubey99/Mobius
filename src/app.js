@@ -35,6 +35,7 @@ const state = {
   loggedIn: sessionStorage.getItem("batchlens_auth") === "true",
   view: "profile",
   demo: sessionStorage.getItem("mobius_demo") === "true",
+  assessmentSelection: {},
   subject: 0,
   semester: 5,
   scores: JSON.parse(localStorage.getItem("batchlens_scores") || "null") || subjects.map(s => s.score)
@@ -263,20 +264,20 @@ function submitView() {
 
 function renderPortal() {
   const profile = state.view === 'profile';
-  const body = profile ? '<div id="enrollmentRoot"></div>' : !state.demo && state.view === 'performance' ? '<div id="relativePerformanceRoot"></div>' : !state.demo && state.view === 'submit' ? '<div id="quizEntryRoot"></div>' : !state.demo ? '<section class="panel score-form"><h2>Academic workspace</h2><p>Your profile and subject enrollment are ready. Operations Research Quiz 1 is ready for your marks.</p><button class="primary-btn" data-view="profile">Back to my subjects</button><button class="primary-btn" data-view="submit">Enter Quiz 1 marks</button></section>' : state.view === "submit" ? submitView() : state.view === "performance" ? performanceView() : dashboard();
+  const body = profile ? '<div id="enrollmentRoot"></div>' : !state.demo && state.view === 'performance' ? '<div id="relativePerformanceRoot"></div>' : !state.demo && state.view === 'submit' ? '<div id="quizEntryRoot"></div>' : !state.demo ? '<section class="panel score-form"><h2>Academic workspace</h2><p>Your profile and subject enrollment are ready. Choose a subject and assessment to enter your marks.</p><button class="primary-btn" data-view="profile">Back to my subjects</button><button class="primary-btn" data-view="submit">Enter marks</button></section>' : state.view === "submit" ? submitView() : state.view === "performance" ? performanceView() : dashboard();
   app.innerHTML = shell(body, profile ? "My profile & subjects" : "Academic Performance", 'Möbius · Student workspace');
   if(state.demo) document.querySelector('.top-title p').textContent='Demo workspace · Example data';
   bindPortal();
-  if(!state.demo && state.view === "performance") mountRelativePerformance(document.querySelector("#relativePerformanceRoot"),{onNavigate:view=>{state.view=view;renderPortal();window.scrollTo(0,0);}});
-  if(!state.demo && state.view === "submit") mountQuizEntry(document.querySelector("#quizEntryRoot"));
-  if(profile) mountEnrollment(document.querySelector('#enrollmentRoot'), {demo:state.demo,notify:message=>{
+  if(!state.demo && state.view === "performance") mountRelativePerformance(document.querySelector("#relativePerformanceRoot"),{selection:state.assessmentSelection,onSelectionChange:selection=>{state.assessmentSelection=selection;},onNavigate:view=>{state.view=view;renderPortal();window.scrollTo(0,0);}});
+  if(!state.demo && state.view === "submit") mountQuizEntry(document.querySelector("#quizEntryRoot"),{selection:state.assessmentSelection,onSelectionChange:selection=>{state.assessmentSelection=selection;}});
+  if(profile) mountEnrollment(document.querySelector('#enrollmentRoot'), {demo:state.demo,onEnterScores:selection=>{state.assessmentSelection=selection;state.view='submit';renderPortal();window.scrollTo(0,0);},notify:message=>{
     const toast=document.createElement('div');toast.className='save-toast';toast.textContent=message;document.body.append(toast);setTimeout(()=>toast.remove(),3000);
   }});
 }
 
 function bindPortal() {
   document.querySelectorAll("[data-view]").forEach(el => el.addEventListener("click", () => { state.view = el.dataset.view; renderPortal(); window.scrollTo(0,0); }));
-  document.querySelector(".logout")?.addEventListener("click", async () => { if(!state.demo && supabase) await supabase.auth.signOut(); sessionStorage.removeItem("mobius_demo"); sessionStorage.removeItem("batchlens_auth"); state.loggedIn=false; renderLogin(); });
+  document.querySelector(".logout")?.addEventListener("click", async () => { if(!state.demo && supabase) await supabase.auth.signOut(); sessionStorage.removeItem("mobius_demo"); sessionStorage.removeItem("batchlens_auth"); state.loggedIn=false; state.assessmentSelection={}; renderLogin(); });
   document.querySelector(".mobile-menu")?.addEventListener("click", () => document.querySelector("#sidebar").classList.toggle("open"));
   document.querySelector("#subjectFilter")?.addEventListener("change", (e) => { state.subject=Number(e.target.value); renderPortal(); });
   document.querySelector("#saveScores")?.addEventListener("click", () => {

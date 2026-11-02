@@ -5,22 +5,40 @@ export function parseMarks(value,max){
  if(Math.abs(marks*100-Math.round(marks*100))>1e-7)throw Error('Use at most two decimal places.');
  return marks;
 }
+export const selectionFor=model=>({termId:model.term.id,subjectId:model.subject.id,assessmentId:model.assessment.id});
 export function quizService(client){
  const check=r=>{if(r.error)throw r.error;return r.data;};
- return {
-  async load(){
+ const api={
+  async catalog(){
    if(!client)throw Error('Student login is awaiting setup.');
    const {user}=check(await client.auth.getUser());if(!user)throw Error('Sign in to submit your marks.');
    const profile=check(await client.from('students').select('id,full_name,batch_id,section').eq('auth_user_id',user.id).single());
-   const term=check(await client.from('terms').select('id,name').eq('batch_id',profile.batch_id).eq('term_number',2).maybeSingle());
-   if(!term)throw Error('Term 2 has not been published for your batch.');
-   const subject=check(await client.from('subjects').select('id,name,code').eq('term_id',term.id).eq('code','OR').maybeSingle());
-   if(!subject)throw Error('Operations Research has not been published for your batch.');
-   const enrollment=check(await client.from('subject_enrollments').select('id,subject_group_id').eq('student_id',profile.id).eq('subject_id',subject.id).maybeSingle());
-   if(!enrollment)throw Error('You are not enrolled in Operations Research. Contact an admin.');
-   const assessment=check(await client.from('assessments').select('id,name,max_marks,weight_percent,submission_deadline').eq('subject_id',subject.id).eq('comparison_key','quiz_1').single());
+   const terms=check(await client.from('terms').select('id,name,term_number').eq('batch_id',profile.batch_id).order('term_number'));
+   const enrollments=check(await client.from('subject_enrollments').select('id,subject_id,subject_group_id').eq('student_id',profile.id));
+   if(!terms.length||!enrollments.length)throw Error('No enrolled subjects are available. Open Profile & Subjects or contact your admin.');
+   const groupIds=[...new Set(enrollments.map(e=>e.subject_group_id).filter(Boolean))];
+   const groups=groupIds.length?check(await client.from('subject_groups').select('id,name,subject_id').in('id',groupIds)):[];
+   const offered=check(await client.from('subjects').select('id,term_id,name,code').in('term_id',terms.map(t=>t.id)).order('name'));
+   const subjects=offered.filter(s=>enrollments.some(e=>e.subject_id===s.id));
+   const assessments=subjects.length?check(await client.from('assessments').select('id,subject_id,name,comparison_key,max_marks,weight_percent,submission_deadline').in('subject_id',subjects.map(s=>s.id)).order('name')):[];
+   if(!assessments.length)throw Error('Your admin has not published assessments for your enrolled subjects yet.');
+   return {profile,terms,subjects,enrollments,assessments,groups};
+  },
+  async load(selection={},catalog){
+   catalog ||= await api.catalog();
+   const {profile,terms,subjects,enrollments,assessments}=catalog;
+   const availableSubjects=subjects.filter(s=>assessments.some(a=>a.subject_id===s.id));
+   const term=selection.termId?terms.find(t=>t.id===selection.termId):terms.find(t=>t.term_number===2&&availableSubjects.some(s=>s.term_id===t.id))||terms.find(t=>availableSubjects.some(s=>s.term_id===t.id));
+   if(!term)throw Error('This term is not available for your batch.');
+   const choices=availableSubjects.filter(s=>s.term_id===term.id);
+   const subject=selection.subjectId?choices.find(s=>s.id===selection.subjectId):choices.find(s=>s.code==='OR')||choices[0];
+   if(!subject)throw Error('No published assessments are available for this enrolled subject or term.');
+   const options=assessments.filter(a=>a.subject_id===subject.id);
+   const assessment=selection.assessmentId?options.find(a=>a.id===selection.assessmentId):options.find(a=>a.comparison_key==='quiz_1')||options[0];
+   if(!assessment)throw Error('This assessment does not belong to the selected subject.');
+   const enrollment=enrollments.find(e=>e.subject_id===subject.id);
    const score=check(await client.from('scores').select('marks,updated_at').eq('subject_enrollment_id',enrollment.id).eq('assessment_id',assessment.id).maybeSingle());
-   return {profile,term,subject,enrollment,assessment,score};
+   return {profile,term,subject,enrollment,group:catalog.groups?.find(g=>g.id===enrollment.subject_group_id),assessment,score,catalog};
   },
   async save(model,value){
    const marks=parseMarks(value,model.assessment.max_marks);
@@ -29,4 +47,5 @@ export function quizService(client){
   },
   async performance(model){return check(await client.rpc('get_my_performance',{p_subject_id:model.subject.id,p_assessment_id:model.assessment.id}));}
  };
+ return api;
 }
