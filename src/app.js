@@ -183,6 +183,7 @@ async function login(demo = false) {
 function sidebar() {
   return `<aside class="sidebar" id="sidebar">
     ${brand()}
+    <div class="sidebar-navigation" aria-label="Workspace navigation">
     <div class="nav-label">Workspace</div>
     <button class="nav-item ${state.view === "profile" ? "active" : ""}" data-view="profile">${icons.user} My profile & subjects</button>
     <button class="nav-item ${state.view === "dashboard" ? "active" : ""}" data-view="dashboard">${icons.home} Overview</button>
@@ -192,7 +193,8 @@ function sidebar() {
     <div class="semester-block">
       ${[1,2,3,4,5,6,7,8].map(s => `<div class="semester-row ${state.view !== "profile" && s === state.semester ? "active" : ""}"><span>Term ${s}</span><i class="sem-dot"></i></div>`).join("")}
     </div>
-    <div class="sidebar-profile"><div class="avatar">${state.demo ? "DS" : "ME"}</div><div><strong>${state.demo ? "Demo Student" : "Student profile"}</strong><small>${state.demo ? "Example account" : "College account"}</small></div><button class="logout" title="Sign out">${icons.logout}</button></div>
+    </div>
+    <div class="sidebar-profile"><div class="avatar">${state.demo ? "DS" : "ME"}</div><div><strong>${state.demo ? "Demo Student" : "Student profile"}</strong><small>${state.demo ? "Example account" : "College account"}</small></div><button class="logout" title="Log out" aria-label="Log out">${icons.logout}</button></div>
   </aside>`;
 }
 

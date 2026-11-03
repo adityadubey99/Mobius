@@ -4,7 +4,7 @@
 
 1. Sign in with the existing college email and current password.
 2. Students without the password-change onboarding marker land on My profile & subjects → Password. This reminder is advisory; the normal navigation remains available.
-3. Enter Current password, New password (at least eight characters), and Confirm new password. Eye buttons reveal only typed input. The current-password field starts empty with a masked placeholder; an existing password cannot be retrieved from Supabase. Click Change password beside it to reveal the new-password and confirmation fields, then Save new password.
+3. The initial Password tab contains only Change password. Click it to open the existing current-password, new-password and confirmation form, then Save new password. Eye buttons reveal typed input; the current-password field uses an empty "Enter current password" placeholder.
 4. Change password validates the fields, verifies the current password against the signed-in account's email, then calls Supabase Auth `updateUser` for that account.
 5. After success, typed inputs are cleared and Back to profile details returns to the normal workspace. The new password is used for subsequent sign-ins.
 6. The Password tab remains beside Profile details and Term & Subjects for future use. There is no separate sidebar password page.
@@ -33,3 +33,11 @@
 - Production build passes.
 - Browser checks with mocked Auth cover profile and subject tabs, three-tab keyboard navigation, expanding the password editor, success, and returning to Profile details. Earlier form checks covered mismatch, incorrect current password and cleared inputs.
 - A real student password has not been changed as part of testing. The live Auth update and new-password sign-in should be checked by the account holder after release.
+
+## Password-tab and sidebar corrections
+
+- Initial tab: removed the current-password field and eye; only Change password is shown.
+- Expanded form: retains the same three fields, validation and Auth update.
+- Sidebar: navigation is in a flexible scroll container while branding and account/logout controls remain inside the viewport. The logout button has an explicit accessible label.
+- Real app demo checked in 1098×640, 1098×500 and 1373×800 frames. Logout bottom positions were 612.5, 472.5 and 772.5 pixels respectively, all within the viewport. These are layout checks at equivalent viewport sizes, not browser zoom automation.
+- Expanded password form still saves successfully with mocked Auth. No real student credentials were changed.
