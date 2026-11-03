@@ -1,5 +1,7 @@
 import "./styles.css";
 import { supabase } from "./supabase.js";
+import { mountPasswordSettings } from "./password-settings.js";
+import { needsPasswordSetup } from "./password-service.js";
 import { mountRelativePerformance } from "./relative-performance.js";
 import { mountQuizEntry } from "./quiz-entry.js";
 import { mountEnrollment, escapeHtml } from "./enrollment.js";
@@ -36,6 +38,7 @@ const state = {
   view: "profile",
   demo: sessionStorage.getItem("mobius_demo") === "true",
   assessmentSelection: {},
+  passwordSetupSuggested: false,
   subject: 0,
   semester: 5,
   scores: JSON.parse(localStorage.getItem("batchlens_scores") || "null") || subjects.map(s => s.score)
@@ -167,8 +170,9 @@ async function login(demo = false) {
       if (!supabase) throw Error('Student login is awaiting setup. You can explore the demo profile below.');
       const email=document.querySelector('#studentId').value.trim().toLowerCase();
       if (!email.endsWith('@iimu.ac.in')) throw Error('Use your approved @iimu.ac.in email.');
-      const {error}=await supabase.auth.signInWithPassword({email,password:document.querySelector('#password').value});
+      const {data,error}=await supabase.auth.signInWithPassword({email,password:document.querySelector('#password').value});
       if(error)throw error;
+      state.passwordSetupSuggested=needsPasswordSetup(data.user);
     }
     state.demo=demo;state.view='profile';
     sessionStorage.setItem('mobius_demo',String(demo));
@@ -264,20 +268,20 @@ function submitView() {
 
 function renderPortal() {
   const profile = state.view === 'profile';
-  const body = profile ? '<div id="enrollmentRoot"></div>' : !state.demo && state.view === 'performance' ? '<div id="relativePerformanceRoot"></div>' : !state.demo && state.view === 'submit' ? '<div id="quizEntryRoot"></div>' : !state.demo ? '<section class="panel score-form"><h2>Academic workspace</h2><p>Your profile and subject enrollment are ready. Choose a subject and assessment to enter your marks.</p><button class="primary-btn" data-view="profile">Back to my subjects</button><button class="primary-btn" data-view="submit">Enter marks</button></section>' : state.view === "submit" ? submitView() : state.view === "performance" ? performanceView() : dashboard();
+  const body = profile ? '<div id="enrollmentRoot"></div>'  : !state.demo && state.view === 'performance' ? '<div id="relativePerformanceRoot"></div>' : !state.demo && state.view === 'submit' ? '<div id="quizEntryRoot"></div>' : !state.demo ? '<section class="panel score-form"><h2>Academic workspace</h2><p>Your profile and subject enrollment are ready. Choose a subject and assessment to enter your marks.</p><button class="primary-btn" data-view="profile">Back to my subjects</button><button class="primary-btn" data-view="submit">Enter marks</button></section>' : state.view === "submit" ? submitView() : state.view === "performance" ? performanceView() : dashboard();
   app.innerHTML = shell(body, profile ? "My profile & subjects" : "Academic Performance", 'Möbius · Student workspace');
   if(state.demo) document.querySelector('.top-title p').textContent='Demo workspace · Example data';
   bindPortal();
   if(!state.demo && state.view === "performance") mountRelativePerformance(document.querySelector("#relativePerformanceRoot"),{selection:state.assessmentSelection,onSelectionChange:selection=>{state.assessmentSelection=selection;},onNavigate:view=>{state.view=view;renderPortal();window.scrollTo(0,0);}});
   if(!state.demo && state.view === "submit") mountQuizEntry(document.querySelector("#quizEntryRoot"),{selection:state.assessmentSelection,onSelectionChange:selection=>{state.assessmentSelection=selection;}});
-  if(profile) mountEnrollment(document.querySelector('#enrollmentRoot'), {demo:state.demo,onEnterScores:selection=>{state.assessmentSelection=selection;state.view='submit';renderPortal();window.scrollTo(0,0);},notify:message=>{
+  if(profile) mountEnrollment(document.querySelector('#enrollmentRoot'), {demo:state.demo,initialTab:!state.demo&&state.passwordSetupSuggested?'password':'profile',mountPassword:(panel,onContinue)=>mountPasswordSettings(panel,{onChanged:()=>{state.passwordSetupSuggested=false;},onContinue}),onEnterScores:selection=>{state.assessmentSelection=selection;state.view='submit';renderPortal();window.scrollTo(0,0);},notify:message=>{
     const toast=document.createElement('div');toast.className='save-toast';toast.textContent=message;document.body.append(toast);setTimeout(()=>toast.remove(),3000);
   }});
 }
 
 function bindPortal() {
   document.querySelectorAll("[data-view]").forEach(el => el.addEventListener("click", () => { state.view = el.dataset.view; renderPortal(); window.scrollTo(0,0); }));
-  document.querySelector(".logout")?.addEventListener("click", async () => { if(!state.demo && supabase) await supabase.auth.signOut(); sessionStorage.removeItem("mobius_demo"); sessionStorage.removeItem("batchlens_auth"); state.loggedIn=false; state.assessmentSelection={}; renderLogin(); });
+  document.querySelector(".logout")?.addEventListener("click", async () => { if(!state.demo && supabase) await supabase.auth.signOut(); sessionStorage.removeItem("mobius_demo"); sessionStorage.removeItem("batchlens_auth"); state.loggedIn=false; state.assessmentSelection={}; state.passwordSetupSuggested=false; renderLogin(); });
   document.querySelector(".mobile-menu")?.addEventListener("click", () => document.querySelector("#sidebar").classList.toggle("open"));
   document.querySelector("#subjectFilter")?.addEventListener("change", (e) => { state.subject=Number(e.target.value); renderPortal(); });
   document.querySelector("#saveScores")?.addEventListener("click", () => {
@@ -294,7 +298,7 @@ function bindPortal() {
 async function start() {
   if (state.demo && state.loggedIn) {renderPortal();return;}
   state.loggedIn=false;
-  if(supabase){const {data:{session}}=await supabase.auth.getSession();state.loggedIn=!!session;}
+  if(supabase){const {data:{session}}=await supabase.auth.getSession();state.loggedIn=!!session;state.passwordSetupSuggested=!!session&&needsPasswordSetup(session.user);}
   state.loggedIn ? renderPortal() : renderLogin();
 }
 start();

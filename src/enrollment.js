@@ -2,7 +2,7 @@ import { supabase } from './supabase.js';
 export const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const demoNames = ['Supply Chain Analytics','Digital Marketing','Corporate Finance','Operations Strategy','Business Analytics','Consumer Behaviour'];
 function readDemo() { try { return JSON.parse(localStorage.getItem('mobius_demo_enrollments') || '{}'); } catch { return {}; } }
-export async function mountEnrollment(root, { demo = false, notify = () => {}, onEnterScores = () => {} } = {}) {
+export async function mountEnrollment(root, { demo = false, notify = () => {}, onEnterScores = () => {}, client = supabase, initialTab = 'profile', mountPassword = () => {} } = {}) {
  let profile, terms, cache = new Map(), request = 0, current, busy = false;
  const check = ({ data, error }) => { if (error) throw error; return data; };
  root.innerHTML = '<p role="status">Loading your academic profile…</p>';
@@ -11,30 +11,33 @@ export async function mountEnrollment(root, { demo = false, notify = () => {}, o
    profile = { full_name:'Demo Student',roll_number:'DEMO-2026',section:'A',college_email:'demo@iimu.ac.in',batches:{name:'2026–28',programs:{name:'MBA 2-year programme'}} };
    terms = Array.from({length:6},(_,i)=>({id:`demo-${i+3}`,term_number:i+3,name:`Term ${i+3}`}));
   } else {
-   if (!supabase) throw Error('Student login has not been connected yet.');
-   profile = check(await supabase.from('students').select('id,full_name,roll_number,college_email,section,batch_id,batches(name,programs(name))').single());
-   check(await supabase.rpc('sync_my_core_enrollments'));
-   terms = check(await supabase.from('terms').select('id,term_number,name').eq('batch_id',profile.batch_id).gte('term_number',1).lte('term_number',8).order('term_number'));
+   if (!client) throw Error('Student login has not been connected yet.');
+   profile = check(await client.from('students').select('id,full_name,roll_number,college_email,section,batch_id,batches(name,programs(name))').single());
+   check(await client.rpc('sync_my_core_enrollments'));
+   terms = check(await client.from('terms').select('id,term_number,name').eq('batch_id',profile.batch_id).gte('term_number',1).lte('term_number',8).order('term_number'));
   }
  } catch(e) { root.innerHTML=`<div class="enrollment-empty" role="alert">${escapeHtml(e.message)}</div>`; return; }
  root.innerHTML = `<div class="profile-summary"><div class="profile-avatar">${escapeHtml(profile.full_name.split(' ').map(w=>w[0]).slice(0,2).join(''))}</div><div><span class="eyebrow">STUDENT PROFILE</span><h2>${escapeHtml(profile.full_name)}</h2><p>${escapeHtml(profile.roll_number)} · Home section ${escapeHtml(profile.section || 'pending')}</p></div><span class="status-pill">${demo?'Demo profile':'Verified student'}</span></div>
  ${demo?'<div class="enrollment-notice">Demo mode · Example subjects only. Changes are saved in this browser, and demo locks are not database security.</div>':''}
- <div class="profile-tabs" role="tablist" aria-label="Profile and subjects"><button type="button" id="profileDetailsTab" role="tab" aria-selected="true" aria-controls="profileDetailsPanel" tabindex="0">Profile details</button><button type="button" id="termSubjectsTab" role="tab" aria-selected="false" aria-controls="termSubjectsPanel" tabindex="-1">Term &amp; Subjects</button></div>
+ <div class="profile-tabs" role="tablist" aria-label="Profile and subjects"><button type="button" id="profileDetailsTab" role="tab" aria-selected="true" aria-controls="profileDetailsPanel" tabindex="0">Profile details</button><button type="button" id="termSubjectsTab" role="tab" aria-selected="false" aria-controls="termSubjectsPanel" tabindex="-1">Term &amp; Subjects</button><button type="button" id="passwordTab" role="tab" aria-selected="false" aria-controls="passwordPanel" tabindex="-1">Password</button></div>
  <section id="profileDetailsPanel" class="panel profile-details" role="tabpanel" aria-labelledby="profileDetailsTab"><div class="panel-head"><div><h3>Profile details</h3><p>Your college identity and academic programme.</p></div></div><dl class="profile-details-grid">${[
  ['Full name',profile.full_name],['College email ID',profile.college_email],['Roll number',profile.roll_number],['Programme',profile.batches?.programs?.name],['Batch',profile.batches?.name],['Section (Terms 1 & 2)',profile.section]
  ].map(([label,value])=>`<div><dt>${label}</dt><dd>${escapeHtml(value || 'Awaiting admin assignment')}</dd></div>`).join('')}</dl><p class="profile-details-note">Your home section is used for Term 1 and Term 2 comparisons. Contact an admin to correct your profile details.</p></section>
  <div id="termSubjectsPanel" role="tabpanel" aria-labelledby="termSubjectsTab" hidden>
  <section class="panel enrollment-panel"><div class="panel-head"><div><h3>Your subjects & sections</h3><p>View core subjects for Terms 1–2. Choose and confirm subjects for Terms 3–8.</p></div><div class="field term-picker"><label for="enrollmentTerm">Select term</label><select id="enrollmentTerm" class="form-select">${Array.from({length:8},(_,i)=>{const n=i+1,t=terms.find(t=>t.term_number===n);return `<option value="${escapeHtml(t?.id||'')}" ${t?'':'disabled'}>Term ${n}${t?'':' · Not offered yet'}</option>`;}).join('')}</select></div></div><div id="enrollmentBody"></div></section>
- <div class="core-note"><strong>Terms 1 & 2</strong><span>All subjects use your registered home section: <strong>${escapeHtml(profile.section || 'Awaiting admin assignment')}</strong>. These assignments are managed by the admin.</span></div></div>`;
+ <div class="core-note"><strong>Terms 1 & 2</strong><span>All subjects use your registered home section: <strong>${escapeHtml(profile.section || 'Awaiting admin assignment')}</strong>. These assignments are managed by the admin.</span></div></div><div id="passwordPanel" role="tabpanel" aria-labelledby="passwordTab" hidden><div id="profilePasswordRoot"></div></div>`;
  const tabs = [...root.querySelectorAll('[role="tab"]')];
+ let passwordMounted=false;
  function selectTab(index, focus = false) {
   tabs.forEach((tab,i)=>{const active=i===index;tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;root.querySelector(`#${tab.getAttribute('aria-controls')}`).hidden=!active;});
   if(focus)tabs[index].focus();
+  if(index===2&&(!passwordMounted||root.querySelector('#passwordChanged:not([hidden])'))){passwordMounted=true;const panel=root.querySelector('#profilePasswordRoot');if(demo)panel.innerHTML='<section class="panel score-form"><h3>Password</h3><p>Sign in with your college account to change your password.</p></section>';else mountPassword(panel,()=>selectTab(0,true));}
  }
  tabs.forEach((tab,index)=>{
   tab.addEventListener('click',()=>selectTab(index));
-  tab.addEventListener('keydown',event=>{let next;if(event.key==='ArrowRight'||event.key==='ArrowLeft')next=1-index;else if(event.key==='Home')next=0;else if(event.key==='End')next=tabs.length-1;else return;event.preventDefault();selectTab(next,true);});
+  tab.addEventListener('keydown',event=>{let next;if(event.key==='ArrowRight')next=(index+1)%tabs.length;else if(event.key==='ArrowLeft')next=(index+tabs.length-1)%tabs.length;else if(event.key==='Home')next=0;else if(event.key==='End')next=tabs.length-1;else return;event.preventDefault();selectTab(next,true);});
  });
+ selectTab(initialTab==='password'?2:0);
  const body = root.querySelector('#enrollmentBody'), picker=root.querySelector('#enrollmentTerm');
  const showError = message => { const el=body.querySelector('#enrollmentError'); if(el){el.textContent=message;el.focus();} else body.textContent=message; };
  async function load(id) {
@@ -48,10 +51,10 @@ export async function mountEnrollment(root, { demo = false, notify = () => {}, o
     const offered=demoNames.map((name,i)=>({id:`${id}-${i}`,name,code:`DEMO-${n}0${i+1}`,is_elective:true}));
     model={offered,groups:offered.flatMap(s=>['1','2','3'].map(x=>({id:`${s.id}-g${x}`,subject_id:s.id,name:`Group ${x}`}))),selected:new Map(saved?.choices?.map(x=>[x.subject_id,x.subject_group_id])||[]),lockedAt:saved?.locked_at,dirty:false};
    } else {
-    const offered=check(await supabase.from('subjects').select('id,name,code,is_elective').eq('term_id',id).order('name'));
-    const groups=offered.length?check(await supabase.from('subject_groups').select('id,subject_id,name').in('subject_id',offered.map(s=>s.id))):[];
-    const enrollment=offered.length?check(await supabase.from('subject_enrollments').select('subject_id,subject_group_id').in('subject_id',offered.map(s=>s.id))):[];
-    const status=check(await supabase.from('term_enrollment_status').select('locked_at').eq('term_id',id).maybeSingle());
+    const offered=check(await client.from('subjects').select('id,name,code,is_elective').eq('term_id',id).order('name'));
+    const groups=offered.length?check(await client.from('subject_groups').select('id,subject_id,name').in('subject_id',offered.map(s=>s.id))):[];
+    const enrollment=offered.length?check(await client.from('subject_enrollments').select('subject_id,subject_group_id').in('subject_id',offered.map(s=>s.id))):[];
+    const status=check(await client.from('term_enrollment_status').select('locked_at').eq('term_id',id).maybeSingle());
     model={offered,groups,selected:new Map(enrollment.map(e=>[e.subject_id,e.subject_group_id])),lockedAt:status?.locked_at,dirty:false};
    }
    cache.set(id,model); if(ticket===request)paint(model);
@@ -95,7 +98,7 @@ export async function mountEnrollment(root, { demo = false, notify = () => {}, o
   try {
    let result;
    if(demo){result={locked_at:lock?new Date().toISOString():null};const saved=readDemo();saved[id]={choices,...result};localStorage.setItem('mobius_demo_enrollments',JSON.stringify(saved));}
-   else result=check(await supabase.rpc('save_my_term_enrollments',{p_term_id:id,p_choices:choices,p_lock:lock}));
+   else result=check(await client.rpc('save_my_term_enrollments',{p_term_id:id,p_choices:choices,p_lock:lock}));
    model.lockedAt=result.locked_at;model.dirty=false;paint(model);notify(lock?'Your subjects and sections are locked.':'Enrollment draft saved.');
   }catch(e){if(e.message?.includes('locked')){cache.delete(id);await load(id);}else paint(model);showError(e.message);}
   finally{busy=false;picker.disabled=false;}
