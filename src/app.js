@@ -56,7 +56,7 @@ function renderLogin() {
         <div class="login-content">
           <span class="eyebrow">Student portal</span>
           <h1>Know where<br/>you stand.</h1>
-          <p>Private, meaningful academic insights — built for your batch, powered by shared progress.</p>
+          <p>Private, meaningful academic insights — powered by shared progress.</p>
           <form id="loginForm"><p id="loginError" class="form-error" role="alert"></p>
             <div class="field"><label for="studentId">College email</label><div class="input-wrap">${icons.user}<input id="studentId" autocomplete="username" placeholder="you@iimu.ac.in" required /></div></div>
             <div class="field"><label for="password">Password</label><div class="input-wrap">${icons.lock}<input id="password" type="password" autocomplete="current-password" placeholder="Enter your password" required /><button class="password-toggle" type="button" aria-label="Show password">${icons.eye}</button></div></div>
