@@ -1,8 +1,9 @@
 import {supabase} from './supabase.js';
 import {escapeHtml} from './enrollment.js';
-import {quizService,selectionFor} from './quiz-service.js';
+import {quizService,selectionFor,OVERALL_SUBJECT} from './quiz-service.js';
 import {assessmentPicker,bindAssessmentPicker} from './assessment-picker.js';
 export async function mountQuizEntry(root,{client=supabase,selection={},onSelectionChange=()=>{},catalog,drafts=new Map()}={}){
+ if(selection.assessmentId===OVERALL_SUBJECT)selection={termId:selection.termId,subjectId:selection.subjectId};
  const ticket=Symbol();root.assessmentRequest=ticket;
  const service=quizService(client);let model,busy=false;
  const esc=escapeHtml;

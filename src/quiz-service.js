@@ -1,3 +1,4 @@
+export const OVERALL_SUBJECT='overall_subject';
 export function parseMarks(value,max){
  if(value===null||value===undefined||String(value).trim()==='')throw Error('Enter your marks; leave unsubmitted scores blank.');
  const marks=Number(value);
@@ -24,7 +25,7 @@ export function quizService(client){
    if(!assessments.length)throw Error('Your admin has not published assessments for your enrolled subjects yet.');
    return {profile,terms,subjects,enrollments,assessments,groups};
   },
-  async load(selection={},catalog){
+  async load(selection={},catalog,{allowOverall=false}={}){
    catalog ||= await api.catalog();
    const {profile,terms,subjects,enrollments,assessments}=catalog;
    const availableSubjects=subjects.filter(s=>assessments.some(a=>a.subject_id===s.id));
@@ -34,18 +35,20 @@ export function quizService(client){
    const subject=selection.subjectId?choices.find(s=>s.id===selection.subjectId):choices.find(s=>s.code==='OR')||choices[0];
    if(!subject)throw Error('No published assessments are available for this enrolled subject or term.');
    const options=assessments.filter(a=>a.subject_id===subject.id);
-   const assessment=selection.assessmentId?options.find(a=>a.id===selection.assessmentId):options.find(a=>a.comparison_key==='quiz_1')||options[0];
+   const cumulative=allowOverall&&selection.assessmentId===OVERALL_SUBJECT;
+   const assessment=cumulative?{id:OVERALL_SUBJECT,name:'Overall subject'}:selection.assessmentId?options.find(a=>a.id===selection.assessmentId):options.find(a=>a.comparison_key==='quiz_1')||options[0];
    if(!assessment)throw Error('This assessment does not belong to the selected subject.');
    const enrollment=enrollments.find(e=>e.subject_id===subject.id);
-   const score=check(await client.from('scores').select('marks,updated_at').eq('subject_enrollment_id',enrollment.id).eq('assessment_id',assessment.id).maybeSingle());
-   return {profile,term,subject,enrollment,group:catalog.groups?.find(g=>g.id===enrollment.subject_group_id),assessment,score,catalog};
+   const score=cumulative?null:check(await client.from('scores').select('marks,updated_at').eq('subject_enrollment_id',enrollment.id).eq('assessment_id',assessment.id).maybeSingle());
+   return {profile,term,subject,enrollment,group:catalog.groups?.find(g=>g.id===enrollment.subject_group_id),assessment,score,catalog,cumulative};
   },
   async save(model,value){
+   if(model.cumulative||model.assessment.id===OVERALL_SUBJECT)throw Error('Enter marks for an individual assessment.');
    const marks=parseMarks(value,model.assessment.max_marks);
    if(model.assessment.submission_deadline&&new Date(model.assessment.submission_deadline)<new Date())throw Error('The score submission deadline has passed.');
    return check(await client.from('scores').upsert({subject_enrollment_id:model.enrollment.id,assessment_id:model.assessment.id,marks},{onConflict:'subject_enrollment_id,assessment_id'}).select('marks,updated_at').single());
   },
-  async performance(model){return check(await client.rpc('get_my_performance',{p_subject_id:model.subject.id,p_assessment_id:model.assessment.id}));}
+  async performance(model){if(model.cumulative)return check(await client.rpc('get_my_cumulative_performance',{p_subject_id:model.subject.id}));return check(await client.rpc('get_my_performance',{p_subject_id:model.subject.id,p_assessment_id:model.assessment.id}));}
  };
  return api;
 }

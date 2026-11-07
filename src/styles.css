@@ -247,3 +247,4 @@ h1, h2, h3, p { margin-top: 0; }
 
 /* Keep account controls inside the viewport; only navigation scrolls. */
 .sidebar{height:100dvh;overflow:hidden}.sidebar>.brand,.sidebar>.sidebar-profile{flex-shrink:0}.sidebar .nav-item .icon{flex-shrink:0}.sidebar-navigation{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:#5c8674 transparent}.sidebar-profile{margin-top:12px}.sidebar .logout{flex-shrink:0}.password-settings>#passwordEdit{margin-top:16px}
+.cumulative-context{flex:0 0 auto;margin:0;padding:8px 20px;background:#f4f8ec;border-bottom:1px solid var(--line);font-size:11px;line-height:1.5;color:#52645b;max-height:64px;overflow:auto}@media(max-width:650px){.cumulative-context{padding:6px 10px;font-size:9px;max-height:50px}}

@@ -40,3 +40,18 @@ test('no enrollment or no published assessments produces a useful empty-state er
  await assert.rejects(quizService(loadClient({subject_enrollments:[]}).client).load(),/No enrolled/);
  await assert.rejects(quizService(loadClient({assessments:[]}).client).load(),/not published assessments/);
 });
+test('overall subject loads only through the performance path and never queries a synthetic score',async()=>{
+ const {client,filters}=loadClient();const api=quizService(client);
+ const result=await api.load({subjectId:'od',assessmentId:'overall_subject'},undefined,{allowOverall:true});
+ assert.equal(result.cumulative,true);assert.equal(result.score,null);assert.equal(result.enrollment.id,'od-enrollment');
+ assert.equal(filters.some(f=>f[0]==='scores'),false);
+ await assert.rejects(api.load({subjectId:'od',assessmentId:'overall_subject'}),/does not belong/);
+});
+test('overall standings call the cumulative RPC for the enrolled subject only',async()=>{
+ let args;const api=quizService({rpc:async(...a)=>{args=a;return{data:{comparisons:[]}};}});
+ await api.performance({...model,cumulative:true});assert.deepEqual(args,['get_my_cumulative_performance',{p_subject_id:'or'}]);
+});
+test('a cumulative score cannot be submitted as an assessment',async()=>{
+ const api=quizService({from:()=>{throw Error('database should not be called');}});
+ await assert.rejects(api.save({...model,cumulative:true},'10'),/individual assessment/);
+});
